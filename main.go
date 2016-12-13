@@ -1,23 +1,17 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var (
-	region = kingpin.Flag("region", "S3 region").Default("us-east-1").String()
-)
-
 func main() {
-	kingpin.CommandLine.HelpFlag.Short('h')
-	kingpin.Version("0.0.1")
+	app := kingpin.New("s3", "A general command line client for S3.")
+	app.HelpFlag.Short('h')
+	app.Version("0.1.0")
+	configureCatCommand(app)
+	configureUploadCommand(app)
 
-	switch kingpin.Parse() {
-	case "upload":
-		runUpload()
-	default:
-		fmt.Println("No command specified")
-	}
+	kingpin.MustParse(app.Parse(os.Args[1:]))
 }

@@ -14,29 +14,38 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var (
-	uploadCommand   = kingpin.Command("upload", "Upload file(s) to S3")
-	uploadBucket    = uploadCommand.Flag("bucket", "S3 bucket").Required().String()
-	uploadPrefix    = uploadCommand.Flag("prefix", "S3 key prefix").Required().String()
-	uploadSourceDir = uploadCommand.Flag("sourcedir", "Source directory").Required().String()
-)
+type UploadCommand struct {
+	Region    string
+	Bucket    string
+	Prefix    string
+	SourceDir string
+}
 
-func runUpload() {
-	sourceDir, err := os.Stat(*uploadSourceDir)
+func configureUploadCommand(app *kingpin.Application) {
+	uc := &UploadCommand{}
+	upload := app.Command("upload", "Upload file(s) to S3").Action(uc.runUpload)
+	upload.Flag("region", "S3 region").Default("us-east-1").StringVar(&uc.Region)
+	upload.Flag("bucket", "S3 bucket").Required().StringVar(&uc.Bucket)
+	upload.Flag("prefix", "S3 prefix").Required().StringVar(&uc.Prefix)
+	upload.Flag("sourcedir", "Source directory").Required().StringVar(&uc.SourceDir)
+}
+
+func (uc *UploadCommand) runUpload(ctx *kingpin.ParseContext) error {
+	sourceDir, err := os.Stat(uc.SourceDir)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
 
-	files, err := ioutil.ReadDir(*uploadSourceDir)
+	files, err := ioutil.ReadDir(uc.SourceDir)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
 
 	for _, fileInfo := range files {
-		sourcePath := fmt.Sprintf("%s/%s", *uploadSourceDir, fileInfo.Name())
-		destKey := fmt.Sprintf("%s/%s/%s", *uploadPrefix, sourceDir.Name(), fileInfo.Name())
+		sourcePath := fmt.Sprintf("%s/%s", uc.SourceDir, fileInfo.Name())
+		destKey := fmt.Sprintf("%s/%s/%s", uc.Prefix, sourceDir.Name(), fileInfo.Name())
 		fmt.Printf("Uploading %s to %s ... ", sourcePath, destKey)
 		file, err := os.Open(sourcePath)
 		if err != nil {
@@ -45,10 +54,10 @@ func runUpload() {
 		}
 		defer file.Close()
 
-		uploader := s3manager.NewUploader(session.New(&aws.Config{Region: aws.String(*region)}))
+		uploader := s3manager.NewUploader(session.New(&aws.Config{Region: aws.String(uc.Region)}))
 		_, err = uploader.Upload(&s3manager.UploadInput{
 			Body:                 bufio.NewReader(file),
-			Bucket:               aws.String(*uploadBucket),
+			Bucket:               aws.String(uc.Bucket),
 			Key:                  aws.String(destKey),
 			ServerSideEncryption: aws.String(s3.ServerSideEncryptionAes256),
 		})
@@ -58,4 +67,6 @@ func runUpload() {
 			fmt.Println("[ SUCCESS ]")
 		}
 	}
+
+	return nil
 }

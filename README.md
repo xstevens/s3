@@ -45,18 +45,22 @@ GOOS=linux GOARCH=amd64 go build -o s3_linux_amd64
 ## Usage
 ```
 $ ./s3 -h
-usage: s3 [<flags>] <command> [<args> ...]
+usage: k [<flags>] <command> [<args> ...]
+
+A general command line client for S3.
 
 Flags:
-  -h, --help                Show context-sensitive help (also try --help-long and --help-man).
-      --region="us-east-1"  S3 region
-      --version             Show application version.
+  -h, --help     Show context-sensitive help (also try --help-long and --help-man).
+      --version  Show application version.
 
 Commands:
   help [<command>...]
     Show help.
 
-  upload --bucket=BUCKET --prefix=PREFIX --sourcedir=SOURCEDIR
+  cat --bucket=BUCKET --prefix=PREFIX [<flags>]
+    Reads all keys with specified prefix and writes them to stdout.
+
+  upload --bucket=BUCKET --prefix=PREFIX --sourcedir=SOURCEDIR [<flags>]
     Upload file(s) to S3
 ```
 
