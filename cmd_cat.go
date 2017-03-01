@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 
 	"os"
@@ -17,9 +16,11 @@ import (
 )
 
 type CatCommand struct {
-	Region string
-	Bucket string
-	Prefix string
+	Region    string
+	Bucket    string
+	Prefix    string
+	MFASerial string
+	RoleARN   string
 }
 
 func configureCatCommand(app *kingpin.Application) {
@@ -28,10 +29,18 @@ func configureCatCommand(app *kingpin.Application) {
 	cat.Flag("region", "S3 region").Default("us-east-1").StringVar(&cc.Region)
 	cat.Flag("bucket", "S3 bucket").Required().StringVar(&cc.Bucket)
 	cat.Flag("prefix", "S3 prefix").Required().StringVar(&cc.Prefix)
+	cat.Flag("serial", "IAM MFA device ARN").StringVar(&cc.MFASerial)
+	cat.Flag("role", "IAM Role ARN to assume").StringVar(&cc.RoleARN)
 }
 
 func (cc *CatCommand) runCat(ctx *kingpin.ParseContext) error {
-	s3Client := s3.New(session.New(&aws.Config{Region: aws.String(cc.Region)}))
+	config := aws.NewConfig().WithRegion(cc.Region)
+	sess, err := newSession(config, &cc.MFASerial, &cc.RoleARN)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open session: %v\n", err.Error())
+		return err
+	}
+	s3Client := s3.New(sess, config)
 
 	objKeys := make([]string, 0, 10000)
 	listParams := &s3.ListObjectsV2Input{
@@ -61,7 +70,7 @@ func (cc *CatCommand) runCat(ctx *kingpin.ParseContext) error {
 		if strings.HasSuffix(k, ".gz") {
 			reader, err = gzip.NewReader(getResp.Body)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to initialize a gzip reader", err.Error())
+				fmt.Fprintf(os.Stderr, "Failed to initialize a gzip reader: %v\n", err.Error())
 			}
 		} else {
 			reader = getResp.Body

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
@@ -19,6 +18,8 @@ type UploadCommand struct {
 	Bucket    string
 	Prefix    string
 	SourceDir string
+	MFASerial string
+	RoleARN   string
 }
 
 func configureUploadCommand(app *kingpin.Application) {
@@ -28,6 +29,8 @@ func configureUploadCommand(app *kingpin.Application) {
 	upload.Flag("bucket", "S3 bucket").Required().StringVar(&uc.Bucket)
 	upload.Flag("prefix", "S3 prefix").Required().StringVar(&uc.Prefix)
 	upload.Flag("sourcedir", "Source directory").Required().StringVar(&uc.SourceDir)
+	upload.Flag("serial", "IAM MFA device ARN").StringVar(&uc.MFASerial)
+	upload.Flag("role", "IAM Role ARN to assume").StringVar(&uc.RoleARN)
 }
 
 func (uc *UploadCommand) runUpload(ctx *kingpin.ParseContext) error {
@@ -54,7 +57,14 @@ func (uc *UploadCommand) runUpload(ctx *kingpin.ParseContext) error {
 		}
 		defer file.Close()
 
-		uploader := s3manager.NewUploader(session.New(&aws.Config{Region: aws.String(uc.Region)}))
+		config := aws.NewConfig().WithRegion(uc.Region)
+		sess, err := newSession(config, &uc.MFASerial, &uc.RoleARN)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to open session: %v\n", err.Error())
+			return err
+		}
+
+		uploader := s3manager.NewUploader(sess)
 		_, err = uploader.Upload(&s3manager.UploadInput{
 			Body:                 bufio.NewReader(file),
 			Bucket:               aws.String(uc.Bucket),
