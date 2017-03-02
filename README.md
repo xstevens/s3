@@ -45,7 +45,7 @@ GOOS=linux GOARCH=amd64 go build -o s3_linux_amd64
 ## Usage
 ```
 $ ./s3 -h
-usage: k [<flags>] <command> [<args> ...]
+usage: s3 [<flags>] <command> [<args> ...]
 
 A general command line client for S3.
 
