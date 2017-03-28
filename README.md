@@ -62,6 +62,9 @@ Commands:
 
   upload --bucket=BUCKET --prefix=PREFIX --sourcedir=SOURCEDIR [<flags>]
     Upload file(s) to S3
+
+  meta --bucket=BUCKET --prefix=PREFIX [<flags>]
+    Reads all keys with specified prefix and writes their metadata to stdout.
 ```
 
 ## License

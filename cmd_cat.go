@@ -48,6 +48,14 @@ func (cc *CatCommand) runCat(ctx *kingpin.ParseContext) error {
 		Prefix:  aws.String(cc.Prefix),
 		MaxKeys: aws.Int64(1000),
 	}
+
+	// this allows us to see errors that otherwise are hidden by list object pages
+	_, err = s3Client.ListObjectsV2(listParams)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to list objects: %v\n", err.Error())
+		return err
+	}
+
 	s3Client.ListObjectsV2Pages(listParams, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
 		for _, obj := range page.Contents {
 			objKeys = append(objKeys, *obj.Key)
@@ -67,7 +75,7 @@ func (cc *CatCommand) runCat(ctx *kingpin.ParseContext) error {
 		}
 
 		var reader io.ReadCloser
-		if strings.HasSuffix(k, ".gz") {
+		if strings.HasSuffix(k, ".gz") || strings.HasSuffix(k, ".tgz") {
 			reader, err = gzip.NewReader(getResp.Body)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to initialize a gzip reader: %v\n", err.Error())

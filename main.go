@@ -12,6 +12,7 @@ func main() {
 	app.Version("0.1.0")
 	configureCatCommand(app)
 	configureUploadCommand(app)
+	configureMetaCommand(app)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 }
